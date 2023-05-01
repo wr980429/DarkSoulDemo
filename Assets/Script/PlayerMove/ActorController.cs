@@ -9,6 +9,7 @@ public class ActorController : MonoBehaviour
 {
     public GameObject playerPrefab;
     public CameraController camControl;
+    public WeaponManager weaponMgr;
     public UserInputBase pInput;
     public float walkSpeed = 2.4f;  //用来调整动画的播放速度与实际的运行距离相匹配防止滑步
     public float runMulti = 2.7f;
@@ -35,8 +36,11 @@ public class ActorController : MonoBehaviour
 
     private CapsuleCollider col;
 
-    private float lerpTarget;
+    //private float lerpTarget;
     private Vector3 deltaPos;
+    public bool leftIsShield = true;
+
+
     void Awake()
     {
         playerPrefab = this.transform.Find("ybot").gameObject;
@@ -44,7 +48,8 @@ public class ActorController : MonoBehaviour
         anim = this.transform.Find("ybot").GetComponent<Animator>();
         rigid = GetComponent<Rigidbody>();
         col = GetComponent<CapsuleCollider>();
-        camControl= this.transform.Find("CameraHandle/CameraPos").GetComponent<CameraController>();
+        camControl = this.transform.Find("CameraHandle/CameraPos").GetComponent<CameraController>();
+        weaponMgr = playerPrefab.GetComponent<WeaponManager>();
     }
 
     // Timer.DeltaTime 1/60
@@ -63,12 +68,12 @@ public class ActorController : MonoBehaviour
             //跳跃设计:按跳跃时 若Forward参数小于0.1就做后跳，0.1到1.1则是滚动,1.1到2是跳跃
             //利用线性插值来过渡动画
             anim.SetFloat("Forward", pInput.Dmag * Mathf.Lerp(anim.GetFloat("Forward"), (pInput.isRun ? 2.0f : 1.0f), 0.5f));
-            anim.SetFloat("Right",0);
+            anim.SetFloat("Right", 0);
         }
         else
         {
             var localDvecz = transform.InverseTransformVector(pInput.Dvec);
-            anim.SetFloat("Forward", localDvecz.z* (pInput.isRun ? 2.0f : 1.0f));
+            anim.SetFloat("Forward", localDvecz.z * (pInput.isRun ? 2.0f : 1.0f));
             anim.SetFloat("Right", localDvecz.x * (pInput.isRun ? 2.0f : 1.0f));
         }
 
@@ -86,12 +91,60 @@ public class ActorController : MonoBehaviour
             canAttack = false;
         }
 
-        if (pInput.isAttack && CheckState("Ground") && canAttack)
+        //没有按下Caps键的左右鼠标轻攻击
+        if (((pInput.isMouse0 && !pInput.isCapsDown) || (pInput.isMouse1 && !pInput.isCapsDown)) && (CheckState("Ground") || CheckStateTag("AttackR") || CheckStateTag("AttackL")) && canAttack)
         {
-            anim.SetTrigger("Attack");
+            //左键是左手攻击 右键是右手攻击
+            if (pInput.isMouse0 && !leftIsShield)
+            {
+                anim.SetBool("R0L1", true);
+                anim.SetTrigger("Attack");
+            }
+            else if (pInput.isMouse1)
+            {
+                anim.SetBool("R0L1", false);
+                anim.SetTrigger("Attack");
+            }
         }
 
-        anim.SetBool("Defense", pInput.isDefense);
+        if (((pInput.isMouse0 && pInput.isCapsDown) || (pInput.isMouse1 && pInput.isCapsDown)) && (CheckState("Ground") || CheckStateTag("AttackR") || CheckStateTag("AttackL")) && canAttack)
+        {
+            //右手重攻击
+            if (pInput.isMouse1)
+            {
+
+            }
+            else
+            {
+                if (!leftIsShield && pInput.isMouse0)
+                {
+                    //左手重攻击
+                }
+                else
+                {
+                    //左手盾反
+                    anim.SetTrigger("CounterBack");
+                }
+            }
+        }
+        if (leftIsShield)
+        {
+            if (CheckState("Ground") || CheckState("blocked"))
+            {
+                anim.SetBool("Defense", pInput.isDefense);
+                anim.SetLayerWeight(anim.GetLayerIndex("Defense"), 1);
+            }
+            else
+            {
+                anim.SetBool("Defense", false);
+                anim.SetLayerWeight(anim.GetLayerIndex("Defense"), 0);
+            }
+        }
+        else
+        {
+            anim.SetLayerWeight(anim.GetLayerIndex("Defense"), 0);
+        }
+        //anim.SetBool("Defense", pInput.isDefense);
 
         if (!camControl.lockState)
         {
@@ -135,9 +188,13 @@ public class ActorController : MonoBehaviour
         thrustVec = Vector3.zero;
         deltaPos = Vector3.zero;
     }
-    private bool CheckState(string stateName, string layerName = "Base Layer")
+    public bool CheckState(string stateName, string layerName = "Base Layer")
     {
         return anim.GetCurrentAnimatorStateInfo(anim.GetLayerIndex(layerName)).IsName(stateName);
+    }
+    public bool CheckStateTag(string tagName, string layerName = "Base Layer")
+    {
+        return anim.GetCurrentAnimatorStateInfo(anim.GetLayerIndex(layerName)).IsTag(tagName);
     }
     public void SetPanerVec(bool isLock)
     {
@@ -171,7 +228,8 @@ public class ActorController : MonoBehaviour
         SetPanerVec(false);
         canAttack = true;
         col.material = frictionOne;
-        trackDirection= false;
+        trackDirection = false;
+        weaponMgr.WeaponDisable();
     }
     public void OnGroundExit()
     {
@@ -186,7 +244,7 @@ public class ActorController : MonoBehaviour
     {
         SetPanerVec(true);
         thrustVec = new Vector3(0, rollVolecity, 0);
-        trackDirection= true; 
+        trackDirection = true;
     }
     public void OnJabEnter()
     {
@@ -208,45 +266,84 @@ public class ActorController : MonoBehaviour
     {
         SetPanerVec(true);
         isLockPanerVec = false;
-        lerpTarget = 1.0f;   
+        //lerpTarget = 1.0f;   
     }
     public void OnAttack1hAUpdate()
     {
         thrustVec = playerPrefab.transform.forward * anim.GetFloat("Attack1hAVelocity");
 
         //lerp插值去设置layout的权重
-        var attackLayoutIndex = anim.GetLayerIndex("Attack");
-        var currentWeight = anim.GetLayerWeight(attackLayoutIndex);
-        currentWeight = Mathf.Lerp(currentWeight, lerpTarget,0.4f);
-        anim.SetLayerWeight(attackLayoutIndex, currentWeight);
+        //var attackLayoutIndex = anim.GetLayerIndex("Attack");
+        //var currentWeight = anim.GetLayerWeight(attackLayoutIndex);
+        //currentWeight = Mathf.Lerp(currentWeight, lerpTarget,0.4f);
+        //anim.SetLayerWeight(attackLayoutIndex, currentWeight);
     }
-    public void OnAttackIdleEnter()
-    {
-        SetPanerVec(false);
-        //anim.SetLayerWeight(anim.GetLayerIndex("Attack"), 0f);
-        lerpTarget = 0;
-    }
-    public void OnAttackIdleUpdate()
-    {
-        var attackLayoutIndex = anim.GetLayerIndex("Attack");
-        var currentWeight = Mathf.Lerp(anim.GetLayerWeight(attackLayoutIndex), lerpTarget, 0.4f);
-        anim.SetLayerWeight(attackLayoutIndex, currentWeight);
-    }
+    //public void OnAttackIdleEnter()
+    //{
+    //    SetPanerVec(false);
+    //    //anim.SetLayerWeight(anim.GetLayerIndex("Attack"), 0f);
+    //    //lerpTarget = 0;
+    //}
 
+    //public void OnAttackIdleUpdate()
+    //{
+    //    //var attackLayoutIndex = anim.GetLayerIndex("Attack");
+    //    //var currentWeight = Mathf.Lerp(anim.GetLayerWeight(attackLayoutIndex), lerpTarget, 0.4f);
+    //    //anim.SetLayerWeight(attackLayoutIndex, currentWeight);
+    //}
+
+    //被打会定身
+    public void OnHitEnter()
+    {
+        pInput.inputEanbled = false;
+        planarVec = Vector3.zero;
+    }
+    public void OnAttackExit()
+    {
+        weaponMgr.WeaponDisable();
+    }
+    public void OnBlockedEnter()
+    {
+        pInput.inputEanbled = false;
+        planarVec = Vector3.zero;
+    }
+    public void OnDieEnter()
+    {
+        pInput.inputEanbled = false;
+        planarVec = Vector3.zero;
+        weaponMgr.WeaponDisable();
+    }
+    public void OnStunnedEnter()
+    {
+        pInput.inputEanbled = false;
+        planarVec = Vector3.zero;
+    }
+    public void OnCounterBackEnter()
+    {
+        pInput.inputEanbled = false;
+        planarVec = Vector3.zero;
+    }
+    public void OnCounterBackExit()
+    {
+        weaponMgr.CounterBackDisable();
+    }
     #region OnAnimtorMove
     public void OnUpdateRM(Vector3 deltaPosition)
     {
         //第三段攻击动画读取动画的动作
-        if(CheckState("attack1hC", "Attack"))
+        if (CheckState("attack1hC"))
         {
             //降低更新的权重来减少摄像机的晃动  但是牺牲了动画运动的精准性
-            deltaPos += (0.8f*deltaPos+0.2f*deltaPosition);
-        }     
+            deltaPos += (0.8f * deltaPos + 0.2f * deltaPosition);
+        }
     }
     #endregion
 
     #endregion
 
-
+    public void IssuerTrigger(string triggerName)
+    {
+        anim.SetTrigger(triggerName);
+    }
 
 }

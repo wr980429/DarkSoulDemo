@@ -18,8 +18,10 @@ public abstract class UserInputBase : MonoBehaviour
     public bool isJump;
     //protected bool isLastJump;
 
-    public bool isAttack;
-   // protected bool isLastAttack;
+    public bool isMouse0;
+    public bool isMouse1;
+    // protected bool isLastAttack;
+    public bool isCapsDown;
 
     public bool isDefense;
     public bool isRoll;
@@ -37,5 +39,10 @@ public abstract class UserInputBase : MonoBehaviour
         outPut.x = input.x * Mathf.Sqrt(1 - (input.y * input.y) / 2.0f);
         outPut.y = input.y * Mathf.Sqrt(1 - (input.x * input.x) / 2.0f);
         return outPut;
+    }
+    protected void UpdateDmagDvec(float Dup,float Dright)
+    {
+        Dmag = Mathf.Sqrt(Dup * Dup + Dright * Dright);
+        Dvec = Dright * transform.right + Dup * transform.forward;
     }
 }   

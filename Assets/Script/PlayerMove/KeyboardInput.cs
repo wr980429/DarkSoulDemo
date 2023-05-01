@@ -18,8 +18,10 @@ public class KeyboardInput : UserInputBase
     public string KEY_D;
 
     public MyButton buttonJump = new MyButton();
-    public MyButton buttonDefense = new MyButton();
-    public MyButton buttonAttack = new MyButton();
+    //public MyButton buttonDefense = new MyButton();
+    public MyButton buttonMouse0 = new MyButton();
+    public MyButton buttonMouse1 = new MyButton();
+    public MyButton buttonCaps = new MyButton();
     public MyButton buttonRun = new MyButton();
     public MyButton buttonForward = new MyButton();
     public MyButton buttonLock=new MyButton();
@@ -33,12 +35,13 @@ public class KeyboardInput : UserInputBase
     {
         var dt=Time.deltaTime;
         buttonJump.Tick(Input.GetKey(KeyCode.Space), dt);
-        buttonDefense.Tick(Input.GetKey(KeyCode.Mouse1), dt);
-        buttonAttack.Tick(Input.GetKey(KeyCode.Mouse0), dt);
+        //buttonDefense.Tick(Input.GetKey(KeyCode.Mouse0), dt);
+        buttonMouse0.Tick(Input.GetKey(KeyCode.Mouse0), dt);
+        buttonMouse1.Tick(Input.GetKey(KeyCode.Mouse1), dt);
         buttonRun.Tick(Input.GetKey(KeyCode.LeftShift), dt);
         buttonForward.Tick(Input.GetKey(KeyCode.W), dt);
         buttonLock.Tick(Input.GetKey(KeyCode.Tab), dt);
-
+        buttonCaps.Tick(Input.GetKey(KeyCode.CapsLock), dt);
 
         if (mouseEnable)
         {
@@ -69,18 +72,18 @@ public class KeyboardInput : UserInputBase
         var tempDAxis = SquareToCircle(new Vector2(Dright, Dup));
         var Dright2 = tempDAxis.x;
         var Dup2 = tempDAxis.y;
-
-        Dmag = Mathf.Sqrt(Dup2 * Dup2
-            + Dright2 * Dright2);
-        Dvec = Dright2 * transform.right + Dup2 * transform.forward;
+        UpdateDmagDvec(Dup2,Dright2);
 
         //奔跑键正按下不动 && 双击W键并按住
         isRun = buttonRun.IsPressing || buttonForward.IsExtendingDelaying;
         isJump = buttonJump.OnPressed;// && buttonJump.IsExtending;
-        isAttack = buttonAttack.OnPressed;
-        isDefense = buttonDefense.IsPressing;
+        isMouse0 = buttonMouse0.OnPressed;
+        isMouse1= buttonMouse1.OnPressed;
+        isCapsDown=buttonCaps.IsPressing;
+        isDefense = buttonMouse0.IsPressing && buttonCaps.IsPressing;
         //跳跃键松开的时候还在长按判定的延迟区间内(0.15s),代表按得时间很短 想要翻滚
         isRoll = buttonJump.OnReleased && buttonJump.IsDelaying;
         isLock=buttonLock.OnPressed;
+       // isMouse0LongPress = buttonMouse0.IsDelaying;
     }
 }
