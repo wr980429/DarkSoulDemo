@@ -17,6 +17,7 @@ public abstract class UserInputBase : MonoBehaviour
     public bool isRun;
     public bool isJump;
     //protected bool isLastJump;
+    public bool isAction;
 
     public bool isMouse0;
     public bool isMouse1;

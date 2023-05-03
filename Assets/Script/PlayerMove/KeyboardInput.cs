@@ -25,7 +25,7 @@ public class KeyboardInput : UserInputBase
     public MyButton buttonRun = new MyButton();
     public MyButton buttonForward = new MyButton();
     public MyButton buttonLock=new MyButton();
-
+    public MyButton buttonAction = new MyButton();
     [Header("=====鼠标设置=====")]
     public bool mouseEnable = true;
     public float mouseSensitivityX = 1f;
@@ -42,6 +42,7 @@ public class KeyboardInput : UserInputBase
         buttonForward.Tick(Input.GetKey(KeyCode.W), dt);
         buttonLock.Tick(Input.GetKey(KeyCode.Tab), dt);
         buttonCaps.Tick(Input.GetKey(KeyCode.CapsLock), dt);
+        buttonAction.Tick(Input.GetKey(KeyCode.F), dt);
 
         if (mouseEnable)
         {
@@ -84,6 +85,7 @@ public class KeyboardInput : UserInputBase
         //跳跃键松开的时候还在长按判定的延迟区间内(0.15s),代表按得时间很短 想要翻滚
         isRoll = buttonJump.OnReleased && buttonJump.IsDelaying;
         isLock=buttonLock.OnPressed;
+        isAction = buttonAction.OnPressed;
        // isMouse0LongPress = buttonMouse0.IsDelaying;
     }
 }

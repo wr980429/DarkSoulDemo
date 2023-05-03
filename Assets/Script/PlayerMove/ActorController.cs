@@ -22,7 +22,7 @@ public class ActorController : MonoBehaviour
     public PhysicMaterial frictionOne;
     public PhysicMaterial frictionZero;
 
-    private Animator anim;
+    public Animator anim;
     private Rigidbody rigid;
     private Vector3 planarVec;
     //冲量向量 用来给刚体施加向上的力
@@ -40,7 +40,7 @@ public class ActorController : MonoBehaviour
     private Vector3 deltaPos;
     public bool leftIsShield = true;
 
-
+    public event Action OnActionBtnClick;
     void Awake()
     {
         playerPrefab = this.transform.Find("ybot").gameObject;
@@ -148,10 +148,13 @@ public class ActorController : MonoBehaviour
 
         if (!camControl.lockState)
         {
-            if (pInput.Dmag > 0.1f)
+            if (pInput.enabled)
             {
-                //使用球形插值来平滑过渡
-                playerPrefab.transform.forward = Vector3.Slerp(playerPrefab.transform.forward, pInput.Dvec, 0.3f);
+                if (pInput.Dmag > 0.1f)
+                {
+                    //使用球形插值来平滑过渡
+                    playerPrefab.transform.forward = Vector3.Slerp(playerPrefab.transform.forward, pInput.Dvec, 0.3f);
+                }
             }
             if (!isLockPanerVec)
             {
@@ -171,7 +174,10 @@ public class ActorController : MonoBehaviour
             if (!isLockPanerVec)
                 planarVec = pInput.Dvec * walkSpeed * (pInput.isRun ? runMulti : 1.0f);
         }
-
+        if (pInput.isAction)
+        {
+            OnActionBtnClick?.Invoke();
+        }
     }
 
     //Timer.DeltaTime 1/50
@@ -327,6 +333,12 @@ public class ActorController : MonoBehaviour
     {
         weaponMgr.CounterBackDisable();
     }
+    public void OnLockEnter()
+    {
+        pInput.inputEanbled= false;
+        planarVec = Vector3.zero;
+        weaponMgr.WeaponDisable();
+    }
     #region OnAnimtorMove
     public void OnUpdateRM(Vector3 deltaPosition)
     {
@@ -346,4 +358,8 @@ public class ActorController : MonoBehaviour
         anim.SetTrigger(triggerName);
     }
 
+    public void IssueBool(string boolName,bool value)
+    {
+        anim.SetBool(boolName,value);
+    }
 }
